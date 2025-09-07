@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Minute Math — Randomized Batch Quiz</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eef7ff;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      max-width: 1200px;
+      margin: auto;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    table {
+      border-collapse: collapse;
+      margin: 10px;
+      float: left;
+    }
+    td {
+      padding: 6px 12px;
+    }
+    input[type="text"] {
+      width: 60px;
+      padding: 4px;
+      text-align: center;
+      background: #fff8e1;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .controls {
+      margin-bottom: 15px;
+    }
+    .btn {
+      padding: 8px 16px;
+      margin: 5px;
+      background: #ff8800;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #ff6600;
+    }
+    .score {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+    .clearfix::after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Minute Math — Customizable Batch Quiz</h2>
+    <p>Solve the problems — press Enter to submit & move to next.</p>
+
+    <div class="controls">
+      Mode:
+      <select id="mode">
+        <option value="add">Addition (+)</option>
+        <option value="sub">Subtraction (−)</option>
+        <option value="mul">Multiplication (×)</option>
+        <option value="div">Division (÷)</option>
+      </select>
+      Min: <input type="number" id="min" value="0" style="width:60px">
+      Max: <input type="number" id="max" value="9" style="width:60px">
+      Problems: <input type="number" id="count" value="20" style="width:60px">
+      Time (seconds): <input type="number" id="time" value="60" style="width:80px">
+      <button class="btn" onclick="startQuiz()">Start Quiz</button>
+      <span id="timer"></span>
+    </div>
+
+    <div id="quizArea" class="clearfix"></div>
+    <button class="btn" onclick="gradeQuiz()">Submit All / Grade</button>
+
+    <div class="score" id="scoreBoard"></div>
+  </div>
+
+  <script>
+    let problems = [];
+    let timerInterval;
+
+    function generateProblems(mode, count, min, max) {
+      let arr = [];
+      for (let i = 0; i < count; i++) {
+        let a = Math.floor(Math.random() * (max - min + 1)) + min;
+        let b = Math.floor(Math.random() * (max - min + 1)) + min;
+
+        let q, ans;
+
+        if (mode === "add") {
+          q = `${a} + ${b}`;
+          ans = a + b;
+        } else if (mode === "sub") {
+          q = `${a} - ${b}`;
+          ans = a - b;
+        } else if (mode === "mul") {
+          q = `${a} × ${b}`;
+          ans = a * b;
+        } else if (mode === "div") {
+          if (b === 0) b = 1;
+          ans = Math.floor(a / b);
+          a = ans * b;
+          q = `${a} ÷ ${b}`;
+        }
+        arr.push({ q, ans });
+      }
+      return arr;
+    }
+
+    function startQuiz() {
+      let mode = document.getElementById("mode").value;
+      let min = parseInt(document.getElementById("min").value);
+      let max = parseInt(document.getElementById("max").value);
+      let count = parseInt(document.getElementById("count").value);
+      let time = parseInt(document.getElementById("time").value);
+
+      problems = generateProblems(mode, count, min, max);
+
+      let area = document.getElementById("quizArea");
+      area.innerHTML = "";
+      let cols = 3;
+      let rows = Math.ceil(problems.length / cols);
+
+      for (let c = 0; c < cols; c++) {
+        let table = document.createElement("table");
+        for (let r = 0; r < rows; r++) {
+          let idx = r + c * rows;
+          if (idx < problems.length) {
+            let row = table.insertRow();
+            let cell1 = row.insertCell();
+            let cell2 = row.insertCell();
+            cell1.innerText = problems[idx].q;
+            let input = document.createElement("input");
+            input.type = "text";
+            input.dataset.ans = problems[idx].ans;
+            input.addEventListener("keydown", function(e) {
+              if (e.key === "Enter") {
+                let inputs = document.querySelectorAll("#quizArea input");
+                let next = Array.from(inputs).indexOf(this) + 1;
+                if (next < inputs.length) {
+                  inputs[next].focus();
+                }
+              }
+            });
+            cell2.appendChild(input);
+          }
+        }
+        area.appendChild(table);
+      }
+
+      document.querySelector("#quizArea input").focus();
+      startTimer(time);
+    }
+
+    function startTimer(seconds) {
+      clearInterval(timerInterval);
+      let timeLeft = seconds;
+      document.getElementById("timer").innerText = `⏱ ${timeLeft}s`;
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("timer").innerText = `⏱ ${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          gradeQuiz();
+        }
+      }, 1000);
+    }
+
+    function gradeQuiz() {
+      clearInterval(timerInterval);
+      let inputs = document.querySelectorAll("#quizArea input");
+      let correct = 0, wrong = 0;
+      inputs.forEach(inp => {
+        let val = parseInt(inp.value);
+        if (val === parseInt(inp.dataset.ans)) {
+          inp.style.background = "#c8f7c5";
+          correct++;
+        } else {
+          inp.style.background = "#f7c5c5";
+          wrong++;
+        }
+      });
+      document.getElementById("scoreBoard").innerText =
+        `✅ Correct: ${correct} | ❌ Wrong: ${wrong} | Total: ${inputs.length}`;
+    }
+  </script>
+</body>
+</html>
